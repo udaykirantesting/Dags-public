@@ -1,9 +1,9 @@
 import datetime
 
 from airflow import models
-from airflow.providers.google.cloud.operators.gcs import GCSListBucketsOperator
-from airflow.utils.dates import days_ago
+from airflow.providers.google.cloud.operators.bigquery import BigQueryListDatasetsOperator
 from airflow.operators.python import PythonOperator
+from airflow.utils.dates import days_ago
 
 # Define your GCP Project ID
 GCP_PROJECT_ID = "gcp-5ann00-sbx-devops"  # Replace with your actual GCP Project ID
@@ -20,40 +20,40 @@ default_args = {
     "project_id": GCP_PROJECT_ID,
 }
 
-def _print_buckets(**kwargs):
+def _print_datasets(**kwargs):
     """
-    A Python function to print the list of buckets retrieved by GCSListBucketsOperator.
-    The result of the GCSListBucketsOperator is pushed to XCom.
+    A Python function to print the list of BigQuery datasets retrieved by BigQueryListDatasetsOperator.
+    The result of the BigQueryListDatasetsOperator is pushed to XCom.
     """
     ti = kwargs["ti"]
-    bucket_names = ti.xcom_pull(task_ids="list_gcs_buckets")
-    if bucket_names:
-        print(f"Found the following GCS buckets in project {GCP_PROJECT_ID}:")
-        for bucket in bucket_names:
-            print(f"- {bucket}")
+    dataset_ids = ti.xcom_pull(task_ids="list_bigquery_datasets")
+    if dataset_ids:
+        print(f"Found the following BigQuery datasets in project {GCP_PROJECT_ID}:")
+        for dataset in dataset_ids:
+            print(f"- {dataset}")
     else:
-        print(f"No GCS buckets found in project {GCP_PROJECT_ID}.")
+        print(f"No BigQuery datasets found in project {GCP_PROJECT_ID}.")
 
 with models.DAG(
-    dag_id="gcp_list_buckets_example",
+    dag_id="gcp_list_bigquery_datasets_example",
     default_args=default_args,
     schedule_interval=None,  # Run manually
     catchup=False,
-    tags=["gcp", "gcs"],
+    tags=["gcp", "bigquery"],
 ) as dag:
-    # Task 1: List all GCS buckets in the specified project
-    list_gcs_buckets = GCSListBucketsOperator(
-        task_id="list_gcs_buckets",
+    # Task 1: List all BigQuery datasets in the specified project
+    list_bigquery_datasets = BigQueryListDatasetsOperator(
+        task_id="list_bigquery_datasets",
         project_id=GCP_PROJECT_ID,
-        # The GCSListBucketsOperator pushes the list of bucket names to XCom
+        # The BigQueryListDatasetsOperator pushes the list of dataset IDs to XCom
         # under the key 'return_value' by default.
     )
 
-    # Task 2: Print the list of buckets retrieved from the previous task
-    print_bucket_list = PythonOperator(
-        task_id="print_bucket_list",
-        python_callable=_print_buckets,
+    # Task 2: Print the list of datasets retrieved from the previous task
+    print_dataset_list = PythonOperator(
+        task_id="print_dataset_list",
+        python_callable=_print_datasets,
     )
 
     # Define task dependencies
-    list_gcs_buckets >> print_bucket_list
+    list_bigquery_datasets >> print_dataset_list
